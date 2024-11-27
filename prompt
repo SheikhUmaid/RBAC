@@ -1,0 +1,675 @@
+"""
+
+is the code above is satisfying the
+
+
+### **Objective**
+
+The goal of this assignment is to assess your understanding and implementation skills regarding **Authentication**, **Authorization**, and **Role-Based Access Control (RBAC)**. These are fundamental security concepts required for developing secure systems, ensuring that users can be authenticated properly, assigned roles, and granted access based on those roles.
+
+> **Note :**
+> 
+> - If you have already built **Authentication**, **Authorization**, and **RBAC** in any previous project, **you can submit it too**. Please include the source code, a brief overview of the system, and how you implemented these concepts. You can also include any relevant documentation that demonstrates your understanding of these principles.
+> - If you have not worked on these concepts yet, we encourage you to **build an Authentication and Authorization system with RBAC** from scratch.
+> - You **don’t have to follow any certain structure**. **You are free to be creative** and design the functions, models, and overall system architecture in a way that best fits your understanding of the concepts.
+
+---
+
+### **Core Requirements**
+
+- Implement an authentication system where users can register, log in, and log out securely.
+- Implement authorization based on roles (e.g., Admin, User, Moderator). Ensure that each role has specific permissions to access certain resources or endpoints.
+- Use secure methods such as JWT or OAuth for managing sessions and user authentication.
+- Implement **Role-Based Access Control (RBAC)**, where the access to resources is determined based on the user's assigned role.
+
+
+
+"""
+
+
+
+urls.py
+
+
+from django.urls import path
+from rest_framework_simplejwt.views import (
+    TokenObtainPairView,
+    TokenRefreshView,
+    TokenBlacklistView,
+)
+
+from rbac.views import (
+
+    # authentication classes
+    RegisterClassView,
+    
+    # File Management
+    FileDetailView,
+    FileListCreateView,
+    
+    # Permission Management
+    FileEditorsView,
+    FileViewersView
+)
+
+
+
+urlpatterns = [
+    # Unit Tests Done Of Authentication Views
+    path("auth/register/", RegisterClassView.as_view(),name="register_view"),
+    path("auth/login/", TokenObtainPairView.as_view(),name="login_view"),
+    path("auth/logout/", TokenBlacklistView.as_view(),name="logout_view"),
+    path("auth/token/refresh/", TokenRefreshView.as_view(),name="refresh_token_view"),
+    
+    
+    # Unit Tests Done for Get and Create
+    path("file/",FileListCreateView.as_view(), name="File-create"),
+    
+    # Unit Tests Done For Get Put Patch Delete 
+    path("file/<int:pk>/",FileDetailView.as_view(), name="File"),
+    
+    # File Permissions Unit Tests Done
+    path("file/<int:pk>/editors/", FileEditorsView.as_view(), name="file-editors"),
+    path("file/<int:pk>/viewers/", FileViewersView.as_view(), name="file-viewers")
+    
+    
+    
+]
+
+
+models.py
+
+from django.db import models
+from django.contrib.auth.models import User
+
+    
+class File(models.Model):
+    name = models.CharField(max_length=255)
+    content = models.TextField()
+    owner = models.ForeignKey(User, related_name='owned_files', on_delete=models.CASCADE)
+    editors = models.ManyToManyField(User, related_name='editable_files', blank=True)
+    viewers = models.ManyToManyField(User, related_name='viewable_files', blank=True)
+    
+    # Audit fields
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    is_deleted = models.BooleanField(default=False)
+    def __str__(self):
+        return self.name
+
+
+
+views.py
+
+
+from rest_framework import status
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.throttling import AnonRateThrottle
+from rest_framework.pagination import PageNumberPagination
+from django.db.models import Q
+from django.shortcuts import get_object_or_404
+from django.core.exceptions import ValidationError
+from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
+from rbac.serializers import RegisterSerializer, FileDetailSerializer, FileSerializer
+from rbac.models import File
+from rbac.permissions import FilePermission
+import logging
+
+
+
+
+# Authentication Class Views
+
+
+
+logger = logging.getLogger(__name__)
+
+class RegisterClassView(APIView):
+    permission_classes = [AllowAny]
+    throttle_classes = [AnonRateThrottle]  # Prevent brute force
+
+    def post(self, request):
+        try:
+            serializer = RegisterSerializer(data=request.data)
+            
+            # Validate data before save
+            if not serializer.is_valid():
+                # Log validation errors
+                logger.warning(f"Registration validation failed: {serializer.errors}")
+                return Response({
+                    "message": "Registration failed",
+                    "errors": serializer.errors
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Save and get the created user
+            user = serializer.save()
+            
+            # Log successful registration
+            logger.info(f"User registered: {user.username}")
+            
+            return Response({
+                "message": "User registered successfully!",
+                "user": {
+                    "id": user.id,
+                    "username": user.username,
+                    "email": user.email
+                }
+            }, status=status.HTTP_201_CREATED)
+        
+        except ValidationError as e:
+            # Catch and log any additional validation errors
+            logger.error(f"Validation error during registration: {str(e)}")
+            return Response({
+                "message": "Registration failed",
+                "errors": str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        except Exception as e:
+            # Catch and log unexpected errors
+            logger.critical(f"Unexpected error during registration: {str(e)}")
+            return Response({
+                "message": "An unexpected error occurred",
+                "errors": "Internal server error"
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    
+class CustomPagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+    def get_paginated_response(self, data):
+        return Response({
+            'links': {
+                'next': self.get_next_link(),
+                'previous': self.get_previous_link()
+            },
+            'total_pages': self.page.paginator.num_pages,
+            'total_items': self.page.paginator.count,
+            'results': data
+        })
+
+
+class FileListCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        """
+        Retrieve files with advanced querying and caching
+        """
+        try:
+            files = File.objects.filter(
+                Q(owner=request.user) |  
+                Q(editors=request.user) | 
+                Q(viewers=request.user)
+            ).select_related('owner').prefetch_related('editors', 'viewers').distinct()
+            # Pagination
+            page = request.query_params.get('page', 1)
+            page_size = request.query_params.get('page_size', 10)
+
+
+            paginator = CustomPagination()
+            paginated_files = paginator.paginate_queryset(files, request)
+            serializer = FileDetailSerializer(paginated_files, many=True)
+            return paginator.get_paginated_response(serializer.data)
+        except Exception as e:
+            print(e)
+            logger.error(f"Error retrieving files: {str(e)}")
+            return Response(
+                {"error": "Unable to retrieve files"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    def post(self, request):
+        """
+        Create a new file with advanced validation and logging
+        """
+        try:
+            # Use detailed serializer for creation
+            serializer = FileSerializer(data=request.data)
+            
+            # Comprehensive validation
+            if not serializer.is_valid():
+                logger.warning(f"File creation failed: {serializer.errors}")
+                return Response(
+                    {"errors": serializer.errors},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Custom save with additional context
+            file_obj = serializer.save(owner=request.user)
+            
+            # Log file creation
+            logger.info(f"File created: {file_obj.id} by user {request.user.username}")
+            
+            # Clear user's file cache
+            # cache.delete(f'user_files_{request.user.id}')
+            
+            return Response(
+                FileSerializer(file_obj).data, 
+                status=status.HTTP_201_CREATED
+            )
+        
+        except ValidationError as ve:
+            logger.error(f"Validation error during file creation: {str(ve)}")
+            return Response(
+                {"error": str(ve)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        except Exception as e:
+            print(e)
+            logger.critical(f"Unexpected error during file creation: {str(e)}")
+            return Response(
+                {"error": "An unexpected error occurred"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class FileDetailView(APIView):
+    permission_classes = [IsAuthenticated, FilePermission]
+
+    def _get_file(self, pk, request):
+        """
+        Centralized method to retrieve and check permissions for a file
+        
+        Args:
+            pk (int): Primary key of the file
+            request (Request): Django REST Framework request object
+        
+        Returns:
+            File: File object with permissions checked
+        
+        Raises:
+            PermissionDenied: If user lacks permissions
+            Http404: If file not found
+        """
+        try:
+            file = get_object_or_404(File, pk=pk)
+            self.check_object_permissions(request, file)
+            return file
+        except Exception as e:
+            logger.error(f"File retrieval error: {str(e)}")
+            raise
+
+    def get(self, request, pk):
+        """
+        Retrieve file details with comprehensive error handling
+        """
+        try:
+            file = self._get_file(pk, request)
+            
+            # Use serializer for consistent response
+            serializer = FileDetailSerializer(file)
+            
+            logger.info(f"File retrieved: {pk} by user {request.user.username}")
+            return Response(serializer.data)
+        
+        except Exception as e:
+            logger.error(f"Get file error: {str(e)}")
+            return Response(
+                {"error": f"{str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    def put(self, request, pk):
+        """
+        Complete file update with comprehensive validation
+        """
+        try:
+            file = self._get_file(pk, request)
+            
+            # Use serializer for validation
+            serializer = FileDetailSerializer(
+                file, 
+                data=request.data, 
+                partial=False
+            )
+            
+            if serializer.is_valid():
+                serializer.save()
+                
+                logger.info(f"File updated: {pk} by user {request.user.username}")
+                return Response(serializer.data)
+            
+            logger.warning(f"File update validation failed: {serializer.errors}")
+            return Response(
+                serializer.errors, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        except ValidationError as ve:
+            logger.error(f"Validation error during file update: {str(ve)}")
+            return Response(
+                {"error": str(ve)}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        except Exception as e:
+            logger.critical(f"Unexpected error during file update: {str(e)}")
+            return Response(
+                {"error": f"{str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    def patch(self, request, pk):
+        """
+        Partial file update with comprehensive validation
+        """
+        try:
+            file = self._get_file(pk, request)
+            
+            # Use serializer for validation
+            serializer = FileDetailSerializer(
+                file, 
+                data=request.data, 
+                context = {'request':request},
+                partial=True
+            )
+            
+            if serializer.is_valid():
+                serializer.save()
+                
+                # logger.info(f"File partially updated: {pk} by user {request.user.username}")
+                return Response(serializer.data)
+            
+            logger.warning(f"Partial file update validation failed: {serializer.errors}")
+            return Response(
+                serializer.errors, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        except ValidationError as ve:
+            logger.error(f"Validation error during partial file update: {str(ve)}")
+            return Response(
+                {"error": str(ve)}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        except Exception as e:
+            logger.critical(f"Unexpected error during partial file update: {str(e)}")
+            print(e)
+            return Response(
+                {"error": f"{str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    def delete(self, request, pk):
+        """
+        File deletion with comprehensive logging and error handling
+        """
+        try:
+            file = self._get_file(pk, request)
+            
+            # Optional: Soft delete instead of hard delete
+            file.is_deleted = True
+            file.save()
+            
+            logger.info(f"File deleted: {pk} by user {request.user.username}")
+            return Response(
+                {"message": "File marked as deleted"},
+                status=status.HTTP_200_OK
+            )
+        
+        except Exception as e:
+            logger.critical(f"Deletion error: {str(e)}")
+            print(e)
+            return Response(
+                {"error": f"{str(e)}"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class FileEditorsView(APIView):
+    permission_classes = [IsAuthenticated, FilePermission]
+
+    def post(self, request, pk):
+        """
+        Add a user to the file's editors.
+        """
+        file = get_object_or_404(File, pk=pk)
+        self.check_object_permissions(request, file)  # Only owner can modify permissions
+        
+        
+        if request.user != file.owner:
+            return Response({"detail": "you dont have have permission for this action"}, status=403)
+
+        user_id = request.data.get("user_id")
+        if not user_id:
+            return Response({"detail": "User ID is required"}, status=400)
+
+        try:
+            user = get_user_model().objects.get(pk=user_id)
+            file.editors.add(user)
+            return Response({"detail": f"User {user.username} added as an editor."})
+        except get_user_model().DoesNotExist as e:
+            return Response({"detail": f"User not founds {e}" }, status=404)
+
+    def delete(self, request, pk):
+        """
+        Remove a user from the file's editors.
+        """
+        file = get_object_or_404(File, pk=pk)
+        self.check_object_permissions(request, file)
+
+        user_id = request.data.get("user_id")
+        if not user_id:
+            return Response({"detail": "User ID is required"}, status=400)
+
+        try:
+            user = get_user_model().objects.get(pk=user_id)
+            file.editors.remove(user)
+            return Response({"detail": f"User {user.username} removed from editors."})
+        except get_user_model().DoesNotExist:
+            return Response({"detail": "User not found"}, status=404)
+        
+        
+class FileViewersView(APIView):
+    permission_classes = [IsAuthenticated, FilePermission]
+
+    def post(self, request, pk):
+        """
+        Add a user to the file's editors.
+        """
+        file = get_object_or_404(File, pk=pk)
+        self.check_object_permissions(request, file)  # Only owner can modify permissions
+        
+        
+        if request.user != file.owner:
+            return Response({"detail": "you dont have have permission for this action"}, status=403)
+
+        user_id = request.data.get("user_id")
+        if not user_id:
+            return Response({"detail": "User ID is required"}, status=400)
+
+        try:
+            user = get_user_model().objects.get(pk=user_id)
+            file.viewers.add(user)
+            return Response({"detail": f"User {user.username} added as an editor."})
+        except get_user_model().DoesNotExist as e:
+            return Response({"detail": f"User not founds {e}" }, status=404)
+
+    def delete(self, request, pk):
+        """
+        Remove a user from the file's editors.
+        """
+        file = get_object_or_404(File, pk=pk)
+        self.check_object_permissions(request, file)
+
+        user_id = request.data.get("user_id")
+        if not user_id:
+            return Response({"detail": "User ID is required"}, status=400)
+
+        try:
+            user = get_user_model().objects.get(pk=user_id)
+            file.viewers.remove(user)
+            return Response({"detail": f"User {user.username} removed from editors."})
+        except get_user_model().DoesNotExist:
+            return Response({"detail": "User not found"}, status=404)
+
+
+
+permissions.py
+
+
+
+from rest_framework.permissions import BasePermission
+
+
+import logging
+from rest_framework.permissions import BasePermission
+from rest_framework import status
+
+logger = logging.getLogger(__name__)
+
+class FilePermission(BasePermission):
+    """
+    Comprehensive permission class for File model with advanced access control.
+    
+    Permission Levels:
+    - Owner: Full access (read, write, delete)
+    - Editors: Read and write
+    - Viewers: Read-only
+    """
+    
+    def has_permission(self, request, view):
+        """
+        Global permission check before object-level permissions.
+        
+        Prevents unauthorized users from accessing any file-related views.
+        """
+        # Authenticated users only
+        if not request.user or not request.user.is_authenticated:
+            logger.warning(f"Unauthorized access attempt: {request.method}")
+            return False
+        
+        return True
+    
+    def has_object_permission(self, request, view, obj):
+        """
+        Granular object-level permission checks.
+        
+        Args:
+            request: Current HTTP request
+            view: Current view
+            obj: File object being accessed
+        
+        Returns:
+            bool: Permission granted or denied
+        """
+        try:
+            # Superuser always has full access
+            if request.user.is_superuser:
+                return True
+            
+            # Safe methods (read-only)
+            if request.method in ['GET', 'HEAD', 'OPTIONS']:
+                return self._check_read_permission(request, obj)
+            
+            # Modification methods
+            if request.method in ['POST', 'PUT', 'PATCH']:
+                return self._check_write_permission(request, obj)
+            
+            # Deletion method
+            if request.method == 'DELETE':
+                return self._check_delete_permission(request, obj)
+            
+            # Unknown method
+            logger.warning(f"Unhandled HTTP method: {request.method}")
+            return False
+        
+        except Exception as e:
+            logger.error(f"Permission check error: {str(e)}")
+            return False
+    
+    def _check_read_permission(self, request, obj):
+        """
+        Check read permissions with detailed logging.
+        
+        Args:
+            request: Current HTTP request
+            obj: File object
+        
+        Returns:
+            bool: Read permission granted
+        """
+        is_allowed = (
+            request.user == obj.owner or 
+            request.user in obj.viewers.all() or 
+            request.user in obj.editors.all()
+        )
+        
+        if not is_allowed:
+            logger.warning(
+                f"Read access denied for user {request.user.username} "
+                f"to file {obj.id}"
+            )
+        
+        return is_allowed
+
+    def _check_write_permission(self, request, obj):
+        is_allowed = (
+            request.user == obj.owner or 
+            request.user in obj.editors.all()
+        )
+        
+        if not is_allowed:
+            logger.warning(
+                f"Write access denied for user {request.user.username} "
+                f"to file {obj.id}"
+            )
+        
+        return is_allowed
+    
+    def _check_delete_permission(self, request, obj):
+        """
+        Check delete permissions with detailed logging.
+        
+        Args:
+            request: Current HTTP request
+            obj: File object
+        
+        Returns:
+            bool: Delete permission granted
+        """
+        is_allowed = request.user == obj.owner
+        print(f"is allowed {is_allowed}")
+        if not is_allowed:
+            logger.warning(
+                f"Delete access denied for user {request.user.username} "
+                f"to file {obj.id}"
+            )
+        
+        return is_allowed
+    
+    
+    
+urls.py project level
+
+
+
+from django.contrib import admin
+from django.urls import path, include
+from rest_framework_simplejwt.views import (
+    TokenObtainPairView,
+    TokenRefreshView,
+)
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('api/',include('rbac.urls')),
+]
+
+
+
+
+
+
+
+
+let us try to add dynamic role management how can i without modifying alot previous code basically i have very less time to submit this assignment
