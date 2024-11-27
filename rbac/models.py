@@ -3,8 +3,6 @@ from django.contrib.auth.models import User
 
 
 
-class Role(models.Model):
-    role = models.CharField(max_length=255)
 
 
 
