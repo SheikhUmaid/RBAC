@@ -1,0 +1,121 @@
+{
+	"info": {
+		"_postman_id": "5d8bc295-6a92-4a8f-86ea-f4866388b0e0",
+		"name": "File Management",
+		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json",
+		"_exporter_id": "37129681"
+	},
+	"item": [
+		{
+			"name": "Create",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzMyNjQ5MzY3LCJpYXQiOjE3MzI2NDIxNjcsImp0aSI6IjQ0YjQ5ZGVmOWIxYTQ1NTJiY2I1YzcwMTUwMzkxM2Q3IiwidXNlcl9pZCI6MTF9.MVoeW2f_odiJkeN4hd1uTEvlydwBqjK8qCeMjSiN0ow",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"name\":\"file1\",\n    \"content\":\"this is some content \"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": "{{api server}}/file/"
+			},
+			"response": []
+		},
+		{
+			"name": "Delete",
+			"request": {
+				"method": "DELETE",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzMyNjUyNTE3LCJpYXQiOjE3MzI2NDUzMTcsImp0aSI6ImQ2OWUyYWIzMzZmNDQ2MDU4MjUxODk2MTVkYjUzZTkxIiwidXNlcl9pZCI6MTF9.1dt7_ez9F1CmwtcHJ9CEE29Y82UJsPWGm095e9jlftg",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"content\": \"this is some new content updated\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": "{{api server}}/file/7/"
+			},
+			"response": []
+		},
+		{
+			"name": "Get",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzMyNjUzNjg3LCJpYXQiOjE3MzI2NDY0ODcsImp0aSI6ImJmMmFmZmY1YTQ1NDQ3NTM5NDg0N2I4ZDdjY2Q3NDc3IiwidXNlcl9pZCI6MTF9.7nx_te7wFMC55lCkdfkgNo4LRoLl-l0SCMid2evGQ1Q",
+						"type": "text"
+					}
+				],
+				"url": "{{api server}}/file/7/"
+			},
+			"response": []
+		},
+		{
+			"name": "Put Update",
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzMyNjU1NDE4LCJpYXQiOjE3MzI2NDgyMTgsImp0aSI6Ijc4ZTRiNGU3NDhhNDQzNTE4ZmJhZGE4M2QwYjdhNzM4IiwidXNlcl9pZCI6MTF9.xDOdC_oTXJy5h9E9gnNKg3yGWu0EKi3f24uTmnrUTcM",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"name\":\"file\"\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": "{{api server}}/file/7/"
+			},
+			"response": []
+		},
+		{
+			"name": "Patch Update",
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzMyNjU1NDE4LCJpYXQiOjE3MzI2NDgyMTgsImp0aSI6Ijc4ZTRiNGU3NDhhNDQzNTE4ZmJhZGE4M2QwYjdhNzM4IiwidXNlcl9pZCI6MTF9.xDOdC_oTXJy5h9E9gnNKg3yGWu0EKi3f24uTmnrUTcM",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n\n    \"content\": \"this is some new content patch updated\"\n\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": "{{api server}}/file/7/"
+			},
+			"response": []
+		}
+	]
+}
