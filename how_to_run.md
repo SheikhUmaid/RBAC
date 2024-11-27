@@ -93,6 +93,7 @@ This will start the server on `http://127.0.0.1:8000/` by default.
 ### 9. Testing the API
 
 * You can test the API using tools like [Postman](https://www.postman.com/) or `curl` to interact with the endpoints like `/auth/register/`, `/auth/login/`, `/file/`, etc.
+* You can test the API endpoints using Postman and all endpoints are provided in the [readme.md](https://chatgpt.com/c/readme.md) file with detailed descriptions of request methods, parameters, and expected responses..
 
 ---
 
@@ -100,5 +101,3 @@ This will start the server on `http://127.0.0.1:8000/` by default.
 
 * **Static Files** : For local development, the static files (like CSS, JS, images) are handled by Django's `runserver` command. However, for production, you will need to configure static files handling.
 * **Environment Variables** : Make sure that you don't expose sensitive information like secret keys in version control. You may want to configure environment variables for production settings.
-
-That's it! You should now be able to run the project locally using SQLite. Let me know if you encounter any issues!
