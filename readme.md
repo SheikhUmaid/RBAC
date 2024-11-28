@@ -1,11 +1,10 @@
-
 # File Management API Documentation
 
 This API allows users to manage files, including creating, reading, updating, and deleting files. It also provides functionality to manage file permissions by adding and removing editors and viewers.
 
 # How to Run
 
-To run the server refer to [how_to_run.md](./how_to_run.me) file
+To run the server refer to [how_to_run.md](./how_to_run.md) file
 
 ## Authentication
 
