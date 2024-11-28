@@ -374,7 +374,7 @@ Authorization: Bearer your_access_token
 
 ```json
 {
-  "user_id": 456
+  "username": "user0"
 }
 ```
 
@@ -402,7 +402,7 @@ Authorization: Bearer your_access_token
 
 ```json
 {
-  "user_id": 456
+  "username": "user1"
 }
 ```
 
@@ -430,7 +430,7 @@ Authorization: Bearer your_access_token
 
 ```json
 {
-  "user_id": 789
+  "username": "user2"
 }
 ```
 
@@ -458,7 +458,7 @@ Authorization: Bearer your_access_token
 
 ```json
 {
-  "user_id": 789
+  "username": "user3"
 }
 ```
 

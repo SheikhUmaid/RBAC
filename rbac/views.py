@@ -333,12 +333,12 @@ class FileEditorsView(APIView):
         if request.user != file.owner:
             return Response({"detail": "you dont have have permission for this action"}, status=403)
 
-        user_id = request.data.get("user_id")
-        if not user_id:
-            return Response({"detail": "User ID is required"}, status=400)
+        username = request.data.get("username")
+        if not username:
+            return Response({"detail": "username is required"}, status=400)
 
         try:
-            user = get_user_model().objects.get(pk=user_id)
+            user = get_user_model().objects.get(username=username)
             file.editors.add(user)
             return Response({"detail": f"User {user.username} added as an editor."})
         except get_user_model().DoesNotExist as e:
@@ -351,12 +351,12 @@ class FileEditorsView(APIView):
         file = get_object_or_404(File, pk=pk)
         self.check_object_permissions(request, file)
 
-        user_id = request.data.get("user_id")
-        if not user_id:
-            return Response({"detail": "User ID is required"}, status=400)
+        username = request.data.get("username")
+        if not username:
+            return Response({"detail": "username is required"}, status=400)
 
         try:
-            user = get_user_model().objects.get(pk=user_id)
+            user = get_user_model().objects.get(username=username)
             file.editors.remove(user)
             return Response({"detail": f"User {user.username} removed from editors."})
         except get_user_model().DoesNotExist:
@@ -377,12 +377,12 @@ class FileViewersView(APIView):
         if request.user != file.owner:
             return Response({"detail": "you dont have have permission for this action"}, status=403)
 
-        user_id = request.data.get("user_id")
-        if not user_id:
+        username = request.data.get("username")
+        if not username:
             return Response({"detail": "User ID is required"}, status=400)
 
         try:
-            user = get_user_model().objects.get(pk=user_id)
+            user = get_user_model().objects.get(username=username)
             file.viewers.add(user)
             return Response({"detail": f"User {user.username} added as an editor."})
         except get_user_model().DoesNotExist as e:
@@ -395,12 +395,12 @@ class FileViewersView(APIView):
         file = get_object_or_404(File, pk=pk)
         self.check_object_permissions(request, file)
 
-        user_id = request.data.get("user_id")
-        if not user_id:
+        username = request.data.get("username")
+        if not username:
             return Response({"detail": "User ID is required"}, status=400)
 
         try:
-            user = get_user_model().objects.get(pk=user_id)
+            user = get_user_model().objects.get(username=username)
             file.viewers.remove(user)
             return Response({"detail": f"User {user.username} removed from editors."})
         except get_user_model().DoesNotExist:
