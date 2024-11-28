@@ -8,7 +8,7 @@ from django_rq import job
 def send_verification_email(recipient_list):
 
     subject = "Welcome"
-    message = f"click on the link to verify your account {}"
+    message = "click on the link to verify your account {}"
     try:
         # Create the email message
         email = EmailMessage(

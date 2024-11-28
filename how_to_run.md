@@ -1,4 +1,3 @@
-
 To run the **RBAC** project locally using SQLite, follow these steps:
 
 ### 1. Clone the Repository
@@ -94,7 +93,7 @@ This will start the server on `http://127.0.0.1:8000/` by default.
 ### 9. Testing the API
 
 * You can test the API using tools like [Postman](https://www.postman.com/) or `curl` to interact with the endpoints like `/auth/register/`, `/auth/login/`, `/file/`, etc.
-* For convenience Posman Collections are given in [testing](./testing/readme.md) directory
+* **For convenience Posman Collections are given in [testing](./testing/readme.md) directory**
 * You can test the API endpoints using Postman and all endpoints are provided in the [readme.md](https://chatgpt.com/c/readme.md) file with detailed descriptions of request methods, parameters, and expected responses.
 
 ---
