@@ -379,7 +379,7 @@ class FileViewersView(APIView):
 
         username = request.data.get("username")
         if not username:
-            return Response({"detail": "User ID is required"}, status=400)
+            return Response({"detail": "username is required"}, status=400)
 
         try:
             user = get_user_model().objects.get(username=username)
@@ -397,7 +397,7 @@ class FileViewersView(APIView):
 
         username = request.data.get("username")
         if not username:
-            return Response({"detail": "User ID is required"}, status=400)
+            return Response({"detail": "username is required"}, status=400)
 
         try:
             user = get_user_model().objects.get(username=username)
