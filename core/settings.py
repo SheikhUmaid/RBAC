@@ -41,6 +41,7 @@ INSTALLED_APPS = [
 
 THIRD_PARTY_APPS = [
     'rest_framework',
+    # 'django_rq'
 ]
 CUSTOM_APPS = [
     'rbac',
@@ -122,6 +123,16 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
+
+# queues  to sent verification emails not implemented because of time constraints
+# RQ_QUEUES = {
+#     'default': {
+#         'HOST': 'localhost',
+#         'PORT': 6379,
+#         'DB': 0,
+#         'DEFAULT_TIMEOUT': 360,
+#     }
+# }
 
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases

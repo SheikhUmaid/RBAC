@@ -14,8 +14,9 @@ from rbac.models import File
 from rbac.permissions import FilePermission
 import logging
 
-
-
+# queues for sending verifications not implemented because of time constraints
+# from rbac.tasks import background_task
+# import django_rq
 
 # Authentication Class Views
 
@@ -23,12 +24,16 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 class RegisterClassView(APIView):
     permission_classes = [AllowAny]
     throttle_classes = [AnonRateThrottle]  # Prevent brute force
 
     def post(self, request):
         try:
+            # queue
+            # queue = django_rq.get_queue()
+            print(queue)
             serializer = RegisterSerializer(data=request.data)
             
             # Validate data before save
@@ -43,11 +48,16 @@ class RegisterClassView(APIView):
             # Save and get the created user
             user = serializer.save()
             
+            
+            
+            # queue
+            # job = queue.enqueue(background_task, user.username)
+
             # Log successful registration
             logger.info(f"User registered: {user.username}")
             
             return Response({
-                "message": "User registered successfully!",
+                "message": "User registered successfully! and email has been sent",
                 "user": {
                     "id": user.id,
                     "username": user.username,
@@ -68,7 +78,7 @@ class RegisterClassView(APIView):
             logger.critical(f"Unexpected error during registration: {str(e)}")
             return Response({
                 "message": "An unexpected error occurred",
-                "errors": "Internal server error"
+                "errors": f"Internal server error {str(e)}"
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     
