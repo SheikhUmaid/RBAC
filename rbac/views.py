@@ -33,7 +33,7 @@ class RegisterClassView(APIView):
         try:
             # queue
             # queue = django_rq.get_queue()
-            print(queue)
+            # print(queue)
             serializer = RegisterSerializer(data=request.data)
             
             # Validate data before save
